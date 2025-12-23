@@ -22,6 +22,17 @@ app.get('/', (req, res) => {
     res.send('server is Running..!!!')
 })
 
+// Verify JWT Token Middleware
+const verifyJWT = (req, res, next) => {
+    const token = req.cookies?.token;
+    if (!token) return res.status(401).send({ message: 'Unauthorized access' });
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+        if (err) return res.status(401).send({ message: 'Unauthorized access' });
+        req.decoded = decoded;
+        next();
+    });
+};
+
 async function run(){
 try{
     await client.connect();
