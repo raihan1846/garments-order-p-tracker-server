@@ -137,8 +137,17 @@ try{
             const total = await productCollection.countDocuments(query);
             res.send({ products, total, page, totalPages: Math.ceil(total / limit) });
         });
-        
 
+// Get single product details
+        app.get('/products/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const product = await productCollection.findOne(query);
+            res.send(product);
+        });
+
+
+        
     app.post('/products', async(req,res)=>{
         const newProduct = req.body;
         const result = await productCollection.insertOne(newProduct);
