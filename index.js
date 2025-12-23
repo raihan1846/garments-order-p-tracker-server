@@ -267,8 +267,18 @@ try{
             res.send(orders);
         });
 
+        // Manager: Add tracking update to an approved order
+        app.post('/tracking/:orderId', verifyJWT, verifyManager, async (req, res) => {
+            const orderId = req.params.orderId;
+            const tracking = req.body;
+            tracking.timestamp = new Date();
+            tracking.updatedBy = req.decoded.email;
+            const result = await trackingCollection.insertOne({ orderId, ...tracking });
+            res.send(result);
+        });
 
-        
+
+
     app.post('/products', async(req,res)=>{
         const newProduct = req.body;
         const result = await productCollection.insertOne(newProduct);
