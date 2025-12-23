@@ -237,6 +237,17 @@ try{
             res.send(orders);
         });
 
+        // Manager: Approve or reject order
+        app.patch('/orders/:id/status', verifyJWT, verifyManager, async (req, res) => {
+            const id = req.params.id;
+            const { status } = req.body; // 'Approved' or 'Rejected'
+            const query = { _id: new ObjectId(id) };
+            const updateDoc = { $set: { status, approvedAt: new Date() } };
+            const result = await orderCollection.updateOne(query, updateDoc);
+            res.send(result);
+        });
+
+
     app.post('/products', async(req,res)=>{
         const newProduct = req.body;
         const result = await productCollection.insertOne(newProduct);
