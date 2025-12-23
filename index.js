@@ -291,7 +291,13 @@ try{
             res.send(tracking);
         });
 
-
+ // Get all users (Admin only)
+        app.get('/admin/users', verifyJWT, verifyAdmin, async (req, res) => {
+            const users = await userCollection.find().toArray();
+            const safeUsers = users.map(({ password, ...user }) => user);
+            res.send(safeUsers);
+        });
+        
 
     app.post('/products', async(req,res)=>{
         const newProduct = req.body;
