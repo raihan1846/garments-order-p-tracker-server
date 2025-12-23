@@ -231,8 +231,12 @@ try{
             res.send(result);
         });
 
+// Manager: Get pending orders
+        app.get('/orders/pending', verifyJWT, verifyManager, async (req, res) => {
+            const orders = await orderCollection.find({ status: 'Pending' }).toArray();
+            res.send(orders);
+        });
 
-        
     app.post('/products', async(req,res)=>{
         const newProduct = req.body;
         const result = await productCollection.insertOne(newProduct);
