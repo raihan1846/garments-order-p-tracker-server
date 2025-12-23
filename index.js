@@ -99,7 +99,18 @@ try{
             res.send(result);
         });
 
-        
+                // Get user by email (for profile, role check)
+        app.get('/users/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const user = await userCollection.findOne(query);
+            if (!user) return res.status(404).send({ message: 'User not found' });
+            // Don't send password back
+            const { password, ...userData } = user;
+            res.send(userData);
+        });
+
+
 
     app.post('/products', async(req,res)=>{
         const newProduct = req.body;
