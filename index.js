@@ -110,6 +110,12 @@ try{
             res.send(userData);
         });
 
+         app.get('/products/home', async (req, res) => {
+            const result = await productCollection.find({ showOnHome: true }).limit(6).toArray();
+            res.send(result);
+        });
+
+        
 
 
     app.post('/products', async(req,res)=>{
