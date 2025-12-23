@@ -248,6 +248,27 @@ try{
         });
 
 
+           // Manager/Admin: Get all orders (with search & filter)
+        app.get('/orders', verifyJWT, async (req, res) => {
+            const user = await userCollection.findOne({ email: req.decoded.email });
+            let query = {};
+            // Manager sees their managed orders, Admin sees all
+            if (user.role === 'manager') {
+                // Get orders for products this manager created
+                const myProducts = await productCollection.find({ createdBy: req.decoded.email }).toArray();
+                const myProductIds = myProducts.map(p => p._id.toString());
+                query = { productId: { $in: myProductIds } };
+            }
+            // Filter by status if provided
+            if (req.query.status) {
+                query.status = req.query.status;
+            }
+            const orders = await orderCollection.find(query).toArray();
+            res.send(orders);
+        });
+
+
+        
     app.post('/products', async(req,res)=>{
         const newProduct = req.body;
         const result = await productCollection.insertOne(newProduct);
