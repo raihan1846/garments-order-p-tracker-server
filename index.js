@@ -212,6 +212,27 @@ try{
             res.send(orders);
         });
 
+         // Buyer: Cancel order (only if pending)
+        app.patch('/orders/:id/cancel', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id), buyerEmail: req.decoded.email };
+            const order = await orderCollection.findOne(query);
+            if (!order) return res.status(404).send({ message: 'Order not found' });
+            if (order.status !== 'Pending') {
+                return res.status(400).send({ message: 'Only pending orders can be cancelled' });
+            }
+            const updateDoc = { $set: { status: 'Cancelled' } };
+            // Restore product quantity
+            await productCollection.updateOne(
+                { _id: new ObjectId(order.productId) },
+                { $inc: { availableQuantity: order.quantity } }
+            );
+            const result = await orderCollection.updateOne(query, updateDoc);
+            res.send(result);
+        });
+
+
+        
     app.post('/products', async(req,res)=>{
         const newProduct = req.body;
         const result = await productCollection.insertOne(newProduct);
