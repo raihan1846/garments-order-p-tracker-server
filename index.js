@@ -147,6 +147,15 @@ try{
         });
 
 
+          // Manager: Add a new product
+        app.post('/products', verifyJWT, verifyManager, async (req, res) => {
+            const product = req.body;
+            product.createdAt = new Date();
+            product.createdBy = req.decoded.email;
+            const result = await productCollection.insertOne(product);
+            res.send(result);
+        });
+
         
     app.post('/products', async(req,res)=>{
         const newProduct = req.body;
