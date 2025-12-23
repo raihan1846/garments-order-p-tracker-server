@@ -155,8 +155,16 @@ try{
             const result = await productCollection.insertOne(product);
             res.send(result);
         });
+// Manager: Update a product
+        app.patch('/products/:id', verifyJWT, verifyManager, async (req, res) => {
+            const id = req.params.id;
+            const updates = req.body;
+            const query = { _id: new ObjectId(id) };
+            const updateDoc = { $set: updates };
+            const result = await productCollection.updateOne(query, updateDoc);
+            res.send(result);
+        });
 
-        
     app.post('/products', async(req,res)=>{
         const newProduct = req.body;
         const result = await productCollection.insertOne(newProduct);
