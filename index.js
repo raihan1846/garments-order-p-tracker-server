@@ -115,8 +115,29 @@ try{
             res.send(result);
         });
 
-        
 
+ // Get all products (All Products page) with pagination
+        app.get('/products', async (req, res) => {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 9;
+            const skip = (page - 1) * limit;
+            const search = req.query.search || '';
+
+            let query = {};
+            if (search) {
+                query = {
+                    $or: [
+                        { productName: { $regex: search, $options: 'i' } },
+                        { category: { $regex: search, $options: 'i' } }
+                    ]
+                };
+            }
+
+            const products = await productCollection.find(query).skip(skip).limit(limit).toArray();
+            const total = await productCollection.countDocuments(query);
+            res.send({ products, total, page, totalPages: Math.ceil(total / limit) });
+        });
+        
 
     app.post('/products', async(req,res)=>{
         const newProduct = req.body;
