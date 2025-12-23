@@ -64,7 +64,7 @@ try{
         trackingCollection = db.collection('tracking');
 
         console.log("✅ Connected to MongoDB");
-        
+
          // Generate JWT and set cookie
         app.post('/jwt', async (req, res) => {
             const email = req.body.email;
@@ -76,6 +76,17 @@ try{
             }).send({ success: true });
         });
 
+
+           // Clear JWT on logout
+        app.post('/logout', (req, res) => {
+            res.clearCookie('token', {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+            }).send({ success: true });
+        });
+
+        
 
     app.post('/products', async(req,res)=>{
         const newProduct = req.body;
