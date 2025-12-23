@@ -50,14 +50,32 @@ const verifyManager = async (req, res, next) => {
     if (user?.role !== 'manager') return res.status(403).send({ message: 'Forbidden access' });
     next();
 };
+// Database Collections
+let db, productCollection, orderCollection, userCollection, trackingCollection;
 
 
 async function run(){
 try{
-    await client.connect();
+     await client.connect();
+        db = client.db('garments_order_production');
+        productCollection = db.collection('products');
+        orderCollection = db.collection('orders');
+        userCollection = db.collection('users');
+        trackingCollection = db.collection('tracking');
 
-    const db = client.db('garments_order_productions');
-    const productCollection = db.collection('products');
+        console.log("✅ Connected to MongoDB");
+        
+         // Generate JWT and set cookie
+        app.post('/jwt', async (req, res) => {
+            const email = req.body.email;
+            const token = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: '7d' });
+            res.cookie('token', token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+            }).send({ success: true });
+        });
+
 
     app.post('/products', async(req,res)=>{
         const newProduct = req.body;
