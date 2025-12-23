@@ -164,7 +164,21 @@ try{
             const result = await productCollection.updateOne(query, updateDoc);
             res.send(result);
         });
+ // Manager/Admin: Delete a product
+        app.delete('/products/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            // Verify authorization - only manager who created or admin can delete
+            const product = await productCollection.findOne(query);
+            const user = await userCollection.findOne({ email: req.decoded.email });
+            if (user.role === 'manager' && product.createdBy !== req.decoded.email) {
+                return res.status(403).send({ message: 'Not authorized to delete this product' });
+            }
+            const result = await productCollection.deleteOne(query);
+            res.send(result);
+        });
 
+        
     app.post('/products', async(req,res)=>{
         const newProduct = req.body;
         const result = await productCollection.insertOne(newProduct);
