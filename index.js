@@ -297,7 +297,19 @@ try{
             const safeUsers = users.map(({ password, ...user }) => user);
             res.send(safeUsers);
         });
-        
+          // Update user role or suspend user
+        app.patch('/admin/users/:email', verifyJWT, verifyAdmin, async (req, res) => {
+            const email = req.params.email;
+            const { role, status, suspendReason } = req.body;
+            const query = { email: email };
+            const updateDoc = { $set: {} };
+            if (role) updateDoc.$set.role = role;
+            if (status) updateDoc.$set.status = status;
+            if (suspendReason) updateDoc.$set.suspendReason = suspendReason;
+            const result = await userCollection.updateOne(query, updateDoc);
+            res.send(result);
+        });
+
 
     app.post('/products', async(req,res)=>{
         const newProduct = req.body;
