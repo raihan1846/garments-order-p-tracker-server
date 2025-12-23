@@ -314,6 +314,16 @@ try{
             const products = await productCollection.find().toArray();
             res.send(products);
         });
+
+          // Admin: Toggle showOnHome for a product
+        app.patch('/admin/products/:id/show-on-home', verifyJWT, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const { showOnHome } = req.body;
+            const query = { _id: new ObjectId(id) };
+            const updateDoc = { $set: { showOnHome } };
+            const result = await productCollection.updateOne(query, updateDoc);
+            res.send(result);
+        });
         
 
     app.post('/products', async(req,res)=>{
