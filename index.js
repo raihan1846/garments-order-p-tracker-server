@@ -178,6 +178,34 @@ try{
             res.send(result);
         });
 
+
+
+          // Buyer: Place a new order
+        app.post('/orders', verifyJWT, async (req, res) => {
+            const order = req.body;
+            order.orderDate = new Date();
+            order.status = 'Pending';
+            order.buyerEmail = req.decoded.email;
+            // Check product quantity
+            const product = await productCollection.findOne({ _id: new ObjectId(order.productId) });
+            if (order.quantity > product.availableQuantity) {
+                return res.status(400).send({ message: 'Order quantity exceeds available stock' });
+            }
+            if (order.quantity < product.minimumOrder) {
+                return res.status(400).send({ message: `Minimum order quantity is ${product.minimumOrder}` });
+            }
+            // Calculate total price
+            order.totalPrice = order.quantity * product.price;
+            const result = await orderCollection.insertOne(order);
+            // Decrease product quantity
+            await productCollection.updateOne(
+                { _id: new ObjectId(order.productId) },
+                { $inc: { availableQuantity: -order.quantity } }
+            );
+            res.send(result);
+        });
+
+
         
     app.post('/products', async(req,res)=>{
         const newProduct = req.body;
