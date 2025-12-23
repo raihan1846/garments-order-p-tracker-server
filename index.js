@@ -205,8 +205,13 @@ try{
             res.send(result);
         });
 
+ // Buyer: Get my orders
+        app.get('/orders/my-orders', verifyJWT, async (req, res) => {
+            const email = req.decoded.email;
+            const orders = await orderCollection.find({ buyerEmail: email }).toArray();
+            res.send(orders);
+        });
 
-        
     app.post('/products', async(req,res)=>{
         const newProduct = req.body;
         const result = await productCollection.insertOne(newProduct);
