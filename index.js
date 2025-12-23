@@ -33,6 +33,16 @@ const verifyJWT = (req, res, next) => {
     });
 };
 
+// Verify Admin Middleware
+const verifyAdmin = async (req, res, next) => {
+    const email = req.decoded.email;
+    const query = { email: email };
+    const user = await userCollection.findOne(query);
+    if (user?.role !== 'admin') return res.status(403).send({ message: 'Forbidden access' });
+    next();
+};
+
+
 async function run(){
 try{
     await client.connect();
