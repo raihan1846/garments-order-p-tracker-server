@@ -324,13 +324,28 @@ try{
             const result = await productCollection.updateOne(query, updateDoc);
             res.send(result);
         });
-        
+          // =============== STATISTICS APIs (Optional) ===============
+        app.get('/stats/overview', verifyJWT, verifyAdmin, async (req, res) => {
+            const totalProducts = await productCollection.countDocuments();
+            const totalOrders = await orderCollection.countDocuments();
+            const totalUsers = await userCollection.countDocuments();
+            const pendingOrders = await orderCollection.countDocuments({ status: 'Pending' });
+            const recentOrders = await orderCollection.countDocuments({
+                orderDate: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } // Last 30 days
+            });
+            res.send({ totalProducts, totalOrders, totalUsers, pendingOrders, recentOrders });
+        });
 
-    app.post('/products', async(req,res)=>{
-        const newProduct = req.body;
-        const result = await productCollection.insertOne(newProduct);
-        res.send(result);
-    })
+        // =============== HEALTH CHECK ===============
+        app.get('/', (req, res) => {
+            res.send('🚀 Garments Order & Production Tracker Server is Running...');
+        });
+
+    // app.post('/products', async(req,res)=>{
+    //     const newProduct = req.body;
+    //     const result = await productCollection.insertOne(newProduct);
+    //     res.send(result);
+    // })
 
     await client.db("admin").command({ping : 1});
     console.log("Ping Database");
