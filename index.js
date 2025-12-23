@@ -277,6 +277,20 @@ try{
             res.send(result);
         });
 
+    // Get tracking timeline for an order
+        app.get('/tracking/:orderId', verifyJWT, async (req, res) => {
+            const orderId = req.params.orderId;
+            // Verify user has access to this order
+            const order = await orderCollection.findOne({ _id: new ObjectId(orderId) });
+            const user = await userCollection.findOne({ email: req.decoded.email });
+            const isAuthorized = user.role === 'admin' ||
+                (user.role === 'manager' && order.productCreatedBy === req.decoded.email) ||
+                order.buyerEmail === req.decoded.email;
+            if (!isAuthorized) return res.status(403).send({ message: 'Not authorized' });
+            const tracking = await trackingCollection.find({ orderId }).sort({ timestamp: 1 }).toArray();
+            res.send(tracking);
+        });
+
 
 
     app.post('/products', async(req,res)=>{
