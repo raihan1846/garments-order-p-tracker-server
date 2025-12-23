@@ -309,7 +309,12 @@ try{
             const result = await userCollection.updateOne(query, updateDoc);
             res.send(result);
         });
-
+  // Admin: Get all products
+        app.get('/admin/products', verifyJWT, verifyAdmin, async (req, res) => {
+            const products = await productCollection.find().toArray();
+            res.send(products);
+        });
+        
 
     app.post('/products', async(req,res)=>{
         const newProduct = req.body;
