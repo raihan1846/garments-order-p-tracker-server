@@ -176,7 +176,7 @@ async function run() {
       res.send(orders);
     });
 
-      // ✅ pending orders
+      // pending orders
     app.get("/orders/pending", async (req, res) => {
       const orders = await orderCollection
         .find({ status: "pending" })
@@ -184,7 +184,7 @@ async function run() {
       res.send(orders);
     });
 
-    // ✅ approved orders
+    // approved orders
     app.get("/orders/approved", async (req, res) => {
       const orders = await orderCollection
         .find({ status: "approved" })
@@ -234,7 +234,7 @@ async function run() {
         res.status(400).send({ message: "Invalid ID" });
       }
     });
-    
+
     app.patch("/orders/:id/tracking", async (req, res) => {
         const { id } = req.params;
         const trackingData = req.body;
