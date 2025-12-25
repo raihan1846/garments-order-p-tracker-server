@@ -23,7 +23,7 @@ const client = new MongoClient(uri, {
 // Connect to DB
 async function run() {
   try {
-    // await client.connect();
+    await client.connect();
     const db = client.db('garments_order_productions');
     const productCollection = db.collection('products');
     const userCollection = db.collection('users');
