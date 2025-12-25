@@ -23,7 +23,7 @@ const client = new MongoClient(uri, {
 // Connect to DB
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
     const db = client.db('garments_order_productions');
     const productCollection = db.collection('products');
     const userCollection = db.collection('users');
@@ -280,4 +280,4 @@ async function run() {
 run().catch(console.dir);
 
 app.get('/', (req, res) => res.send('Server is running...'));
-app.listen(port, () => console.log(`Server running on port ${port}`));
+// app.listen(port, () => console.log(`Server running on port ${port}`));
