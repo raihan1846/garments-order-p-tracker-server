@@ -176,6 +176,24 @@ async function run() {
       res.send(orders);
     });
 
+      // ✅ pending orders
+    app.get("/orders/pending", async (req, res) => {
+      const orders = await orderCollection
+        .find({ status: "pending" })
+        .toArray();
+      res.send(orders);
+    });
+
+    // ✅ approved orders
+    app.get("/orders/approved", async (req, res) => {
+      const orders = await orderCollection
+        .find({ status: "approved" })
+        .toArray();
+      res.send(orders);
+    });
+
+
+
     app.get('/orders/user/:userId', async (req, res) => {
       const orders = await orderCollection.find({ userId: req.params.userId }).toArray();
       res.send(orders);
@@ -205,7 +223,7 @@ async function run() {
       );
       res.send(result);
     });
-    
+
   app.get('/products/orders/:id', async (req, res) => {
       const id = req.params.id;
       try {
@@ -216,6 +234,26 @@ async function run() {
         res.status(400).send({ message: "Invalid ID" });
       }
     });
+    
+    app.patch("/orders/:id/tracking", async (req, res) => {
+        const { id } = req.params;
+        const trackingData = req.body;
+
+        const result = await orderCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $push: {
+              tracking: {
+                ...trackingData,
+                createdAt: new Date()
+              }
+            }
+          }
+        );
+
+        res.send(result);
+      });
+
     app.put('/orders/tracking/:id', async (req, res) => {
       const trackingUpdate = req.body; // { status, location, note, date }
       const result = await orderCollection.updateOne(

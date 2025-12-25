@@ -183,6 +183,34 @@ app.post('/users', async (req, res) => {
       res.send(orders);
     });
 
+    // approved order 
+app.get("/orders/approved", async (req, res) => {
+  try {
+    const orders = await ordersCollection
+      .find({ status: "approved" })
+      .toArray();
+
+    res.send(orders);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to fetch approved orders" });
+  }
+});
+
+// pending order 
+
+app.get("/orders/pending", async (req, res) => {
+  try {
+    const orders = await ordersCollection
+      .find({ status: "pending" })
+      .toArray();
+
+    res.send(orders);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to fetch pending orders" });
+  }
+});
+
+
     // GET orders by user
     app.get('/orders/user/:userId', async (req, res) => {
       const userId = req.params.userId;
@@ -261,7 +289,6 @@ app.post('/users', async (req, res) => {
 
 
   } finally {
-    // Do not close the DB, we want it live for API
   }
 }
 
