@@ -1,14 +1,17 @@
+// server.js
 const express = require('express');
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+
 const app = express();
 const port = process.env.PORT || 3000;
 
-// middleware
-
+// Middleware
 app.use(cors());
 app.use(express.json());
-const uri = "mongodb+srv://garmentsorderproductiontracker:w64Wp9VVTZ0nF6tc@cleancommunity.elxtjut.mongodb.net/?appName=CleanCommunity";
+
+// MongoDB URI
+const uri = "mongodb+srv://garmentsOPdb:8VlTG3cHxcjUOgYG@garmentsorderproduction.znkdhhx.mongodb.net/?appName=garmentsorderproduction";
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -17,345 +20,226 @@ const client = new MongoClient(uri, {
   }
 });
 
+// Connect to DB
+async function run() {
+  try {
+    await client.connect();
+    const db = client.db('garments_order_productions');
+    const productCollection = db.collection('products');
+    const userCollection = db.collection('users');
+    const orderCollection = db.collection('orders');
 
-app.get('/', (req, res) => {
-    res.send('server is Running..!!!')
-})
+    console.log("Connected to MongoDB");
 
-// Verify JWT Token Middleware
-const verifyJWT = (req, res, next) => {
-    const token = req.cookies?.token;
-    if (!token) return res.status(401).send({ message: 'Unauthorized access' });
-    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-        if (err) return res.status(401).send({ message: 'Unauthorized access' });
-        req.decoded = decoded;
-        next();
+    /** ------------------- PRODUCTS ------------------- **/
+
+    app.get('/products', async (req, res) => {
+      const products = await productCollection.find().toArray();
+      res.send(products);
     });
-};
 
-// Verify Admin Middleware
-const verifyAdmin = async (req, res, next) => {
-    const email = req.decoded.email;
-    const query = { email: email };
-    const user = await userCollection.findOne(query);
-    if (user?.role !== 'admin') return res.status(403).send({ message: 'Forbidden access' });
-    next();
-};
+    app.get('/products/:id', async (req, res) => {
+      try {
+        const product = await productCollection.findOne({ _id: new ObjectId(req.params.id) });
+        if (!product) return res.status(404).send({ message: "Product not found" });
+        res.send(product);
+      } catch {
+        res.status(400).send({ message: "Invalid ID" });
+      }
+    });
 
-// Verify Manager Middleware
-const verifyManager = async (req, res, next) => {
-    const email = req.decoded.email;
-    const query = { email: email };
-    const user = await userCollection.findOne(query);
-    if (user?.role !== 'manager') return res.status(403).send({ message: 'Forbidden access' });
-    next();
-};
-// Database Collections
-let db, productCollection, orderCollection, userCollection, trackingCollection;
+    app.post('/products', async (req, res) => {
+      const result = await productCollection.insertOne(req.body);
+      res.send(result);
+    });
 
+    app.put('/products/:id', async (req, res) => {
+      try {
+        const result = await productCollection.updateOne(
+          { _id: new ObjectId(req.params.id) },
+          { $set: req.body }
+        );
+        if (result.matchedCount === 0) return res.status(404).send({ message: "Product not found" });
+        res.send({ message: "Product updated", result });
+      } catch {
+        res.status(400).send({ message: "Invalid ID" });
+      }
+    });
 
-async function run(){
-try{
-     await client.connect();
-        db = client.db('garments_order_production');
-        productCollection = db.collection('products');
-        orderCollection = db.collection('orders');
-        userCollection = db.collection('users');
-        trackingCollection = db.collection('tracking');
+    app.delete('/products/:id', async (req, res) => {
+      try {
+        const result = await productCollection.deleteOne({ _id: new ObjectId(req.params.id) });
+        if (result.deletedCount === 0) return res.status(404).send({ message: "Product not found" });
+        res.send({ message: "Product deleted" });
+      } catch {
+        res.status(400).send({ message: "Invalid ID" });
+      }
+    });
 
-        console.log("✅ Connected to MongoDB");
+    /** ------------------- USERS ------------------- **/
 
-         // Generate JWT and set cookie
-        app.post('/jwt', async (req, res) => {
-            const email = req.body.email;
-            const token = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: '7d' });
-            res.cookie('token', token, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-            }).send({ success: true });
-        });
+    // GET users (all or by email query)
+    app.get('/users', async (req, res) => {
+      try {
+        const { email } = req.query;
+        const query = email ? { email: email.toLowerCase() } : {};
+        const users = await userCollection.find(query).toArray();
+        res.send(users);
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ message: "Server error" });
+      }
+    });
 
+    // GET single user by ID
+    app.get('/users/:id', async (req, res) => {
+      try {
+        const user = await userCollection.findOne({ _id: new ObjectId(req.params.id) });
+        if (!user) return res.status(404).send({ message: 'User not found' });
+        res.send(user);
+      } catch {
+        res.status(400).send({ message: "Invalid ID" });
+      }
+    });
 
-           // Clear JWT on logout
-        app.post('/logout', (req, res) => {
-            res.clearCookie('token', {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-            }).send({ success: true });
-        });
+    // GET user by Firebase UID
+    app.get('/users/firebase/:uid', async (req, res) => {
+      try {
+        const user = await userCollection.findOne({ firebaseUid: req.params.uid });
+        if (!user) return res.status(404).send({ message: "User not found" });
+        res.send(user); // role সহ সব data
+      } catch {
+        res.status(500).send({ message: "Server error" });
+      }
+    });
 
-         // Save or update user data (Registration / Social Login)
-        app.put('/users/:email', async (req, res) => {
-            const email = req.params.email;
-            const user = req.body;
-            const query = { email: email };
-            const options = { upsert: true };
-            const updateDoc = {
-                $set: user,
-            };
-            const result = await userCollection.updateOne(query, updateDoc, options);
-            res.send(result);
-        });
+    // POST new user (social login or normal)
+    app.post('/users', async (req, res) => {
+      try {
+        const newUser = req.body;
+        newUser.email = newUser.email.toLowerCase();
 
-                // Get user by email (for profile, role check)
-        app.get('/users/:email', verifyJWT, async (req, res) => {
-            const email = req.params.email;
-            const query = { email: email };
-            const user = await userCollection.findOne(query);
-            if (!user) return res.status(404).send({ message: 'User not found' });
-            // Don't send password back
-            const { password, ...userData } = user;
-            res.send(userData);
-        });
+        const existingUser = await userCollection.findOne({ email: newUser.email });
+        if (existingUser) return res.status(409).send({ message: "User already exists" });
 
-         app.get('/products/home', async (req, res) => {
-            const result = await productCollection.find({ showOnHome: true }).limit(6).toArray();
-            res.send(result);
-        });
+        const result = await userCollection.insertOne(newUser);
+        res.send(result);
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ message: "Server error" });
+      }
+    });
 
+    // UPDATE user role/status
+    app.put('/users/:id', async (req, res) => {
+      try {
+        const result = await userCollection.updateOne(
+          { _id: new ObjectId(req.params.id) },
+          { $set: req.body }
+        );
+        res.send(result);
+      } catch {
+        res.status(400).send({ message: "Invalid ID" });
+      }
+    });
 
- // Get all products (All Products page) with pagination
-        app.get('/products', async (req, res) => {
-            const page = parseInt(req.query.page) || 1;
-            const limit = parseInt(req.query.limit) || 9;
-            const skip = (page - 1) * limit;
-            const search = req.query.search || '';
+    // DELETE user
+    app.delete('/users/:id', async (req, res) => {
+      try {
+        const result = await userCollection.deleteOne({ _id: new ObjectId(req.params.id) });
+        res.send(result);
+      } catch {
+        res.status(400).send({ message: "Invalid ID" });
+      }
+    });
 
-            let query = {};
-            if (search) {
-                query = {
-                    $or: [
-                        { productName: { $regex: search, $options: 'i' } },
-                        { category: { $regex: search, $options: 'i' } }
-                    ]
-                };
-            }
+    // POST login
+    app.post('/login', async (req, res) => {
+      try {
+        const { email, password } = req.body;
+        const user = await userCollection.findOne({ email: email.toLowerCase() });
 
-            const products = await productCollection.find(query).skip(skip).limit(limit).toArray();
-            const total = await productCollection.countDocuments(query);
-            res.send({ products, total, page, totalPages: Math.ceil(total / limit) });
-        });
+        if (!user) return res.status(401).send({ message: "User not found" });
+        if (user.status === "suspended") return res.status(403).send({ message: `Account suspended: ${user.suspendFeedback}` });
+        if (password !== user.password) return res.status(401).send({ message: "Incorrect password" });
 
-// Get single product details
-        app.get('/products/:id', async (req, res) => {
-            const id = req.params.id;
-            const query = { _id: new ObjectId(id) };
-            const product = await productCollection.findOne(query);
-            res.send(product);
-        });
+        res.send({ message: "Login successful", user });
+      } catch {
+        res.status(500).send({ message: "Server error" });
+      }
+    });
 
+    /** ------------------- ORDERS ------------------- **/
 
-          // Manager: Add a new product
-        app.post('/products', verifyJWT, verifyManager, async (req, res) => {
-            const product = req.body;
-            product.createdAt = new Date();
-            product.createdBy = req.decoded.email;
-            const result = await productCollection.insertOne(product);
-            res.send(result);
-        });
-// Manager: Update a product
-        app.patch('/products/:id', verifyJWT, verifyManager, async (req, res) => {
-            const id = req.params.id;
-            const updates = req.body;
-            const query = { _id: new ObjectId(id) };
-            const updateDoc = { $set: updates };
-            const result = await productCollection.updateOne(query, updateDoc);
-            res.send(result);
-        });
- // Manager/Admin: Delete a product
-        app.delete('/products/:id', verifyJWT, async (req, res) => {
-            const id = req.params.id;
-            const query = { _id: new ObjectId(id) };
-            // Verify authorization - only manager who created or admin can delete
-            const product = await productCollection.findOne(query);
-            const user = await userCollection.findOne({ email: req.decoded.email });
-            if (user.role === 'manager' && product.createdBy !== req.decoded.email) {
-                return res.status(403).send({ message: 'Not authorized to delete this product' });
-            }
-            const result = await productCollection.deleteOne(query);
-            res.send(result);
-        });
+    app.get('/orders', async (req, res) => {
+      const orders = await orderCollection.find().toArray();
+      res.send(orders);
+    });
 
+    app.get('/orders/user/:userId', async (req, res) => {
+      const orders = await orderCollection.find({ userId: req.params.userId }).toArray();
+      res.send(orders);
+    });
 
+    app.get('/orders/:id', async (req, res) => {
+      try {
+        const order = await orderCollection.findOne({ _id: new ObjectId(req.params.id) });
+        if (!order) return res.status(404).send({ message: "Order not found" });
+        res.send(order);
+      } catch {
+        res.status(400).send({ message: "Invalid ID" });
+      }
+    });
 
-          // Buyer: Place a new order
-        app.post('/orders', verifyJWT, async (req, res) => {
-            const order = req.body;
-            order.orderDate = new Date();
-            order.status = 'Pending';
-            order.buyerEmail = req.decoded.email;
-            // Check product quantity
-            const product = await productCollection.findOne({ _id: new ObjectId(order.productId) });
-            if (order.quantity > product.availableQuantity) {
-                return res.status(400).send({ message: 'Order quantity exceeds available stock' });
-            }
-            if (order.quantity < product.minimumOrder) {
-                return res.status(400).send({ message: `Minimum order quantity is ${product.minimumOrder}` });
-            }
-            // Calculate total price
-            order.totalPrice = order.quantity * product.price;
-            const result = await orderCollection.insertOne(order);
-            // Decrease product quantity
-            await productCollection.updateOne(
-                { _id: new ObjectId(order.productId) },
-                { $inc: { availableQuantity: -order.quantity } }
-            );
-            res.send(result);
-        });
+    app.post('/orders', async (req, res) => {
+      const newOrder = { ...req.body, status: 'pending', tracking: [] };
+      const result = await orderCollection.insertOne(newOrder);
+      res.send(result);
+    });
 
- // Buyer: Get my orders
-        app.get('/orders/my-orders', verifyJWT, async (req, res) => {
-            const email = req.decoded.email;
-            const orders = await orderCollection.find({ buyerEmail: email }).toArray();
-            res.send(orders);
-        });
+    app.put('/orders/:id', async (req, res) => {
+      const { status, approvedAt } = req.body;
+      const result = await orderCollection.updateOne(
+        { _id: new ObjectId(req.params.id) },
+        { $set: { status, approvedAt: approvedAt || null } }
+      );
+      res.send(result);
+    });
+    
+  app.get('/products/orders/:id', async (req, res) => {
+      const id = req.params.id;
+      try {
+        const order = await db.collection('orders').findOne({ _id: new ObjectId(id) });
+        if (!order) return res.status(404).send({ message: "Order not found" });
+        res.send(order);
+      } catch (err) {
+        res.status(400).send({ message: "Invalid ID" });
+      }
+    });
+    app.put('/orders/tracking/:id', async (req, res) => {
+      const trackingUpdate = req.body; // { status, location, note, date }
+      const result = await orderCollection.updateOne(
+        { _id: new ObjectId(req.params.id) },
+        { $push: { tracking: trackingUpdate } }
+      );
+      res.send(result);
+    });
 
-         // Buyer: Cancel order (only if pending)
-        app.patch('/orders/:id/cancel', verifyJWT, async (req, res) => {
-            const id = req.params.id;
-            const query = { _id: new ObjectId(id), buyerEmail: req.decoded.email };
-            const order = await orderCollection.findOne(query);
-            if (!order) return res.status(404).send({ message: 'Order not found' });
-            if (order.status !== 'Pending') {
-                return res.status(400).send({ message: 'Only pending orders can be cancelled' });
-            }
-            const updateDoc = { $set: { status: 'Cancelled' } };
-            // Restore product quantity
-            await productCollection.updateOne(
-                { _id: new ObjectId(order.productId) },
-                { $inc: { availableQuantity: order.quantity } }
-            );
-            const result = await orderCollection.updateOne(query, updateDoc);
-            res.send(result);
-        });
+    app.delete('/orders/:id', async (req, res) => {
+      try {
+        const result = await orderCollection.deleteOne({ _id: new ObjectId(req.params.id) });
+        res.send(result);
+      } catch {
+        res.status(400).send({ message: "Invalid ID" });
+      }
+    });
 
-// Manager: Get pending orders
-        app.get('/orders/pending', verifyJWT, verifyManager, async (req, res) => {
-            const orders = await orderCollection.find({ status: 'Pending' }).toArray();
-            res.send(orders);
-        });
-
-        // Manager: Approve or reject order
-        app.patch('/orders/:id/status', verifyJWT, verifyManager, async (req, res) => {
-            const id = req.params.id;
-            const { status } = req.body; // 'Approved' or 'Rejected'
-            const query = { _id: new ObjectId(id) };
-            const updateDoc = { $set: { status, approvedAt: new Date() } };
-            const result = await orderCollection.updateOne(query, updateDoc);
-            res.send(result);
-        });
-
-
-           // Manager/Admin: Get all orders (with search & filter)
-        app.get('/orders', verifyJWT, async (req, res) => {
-            const user = await userCollection.findOne({ email: req.decoded.email });
-            let query = {};
-            // Manager sees their managed orders, Admin sees all
-            if (user.role === 'manager') {
-                // Get orders for products this manager created
-                const myProducts = await productCollection.find({ createdBy: req.decoded.email }).toArray();
-                const myProductIds = myProducts.map(p => p._id.toString());
-                query = { productId: { $in: myProductIds } };
-            }
-            // Filter by status if provided
-            if (req.query.status) {
-                query.status = req.query.status;
-            }
-            const orders = await orderCollection.find(query).toArray();
-            res.send(orders);
-        });
-
-        // Manager: Add tracking update to an approved order
-        app.post('/tracking/:orderId', verifyJWT, verifyManager, async (req, res) => {
-            const orderId = req.params.orderId;
-            const tracking = req.body;
-            tracking.timestamp = new Date();
-            tracking.updatedBy = req.decoded.email;
-            const result = await trackingCollection.insertOne({ orderId, ...tracking });
-            res.send(result);
-        });
-
-    // Get tracking timeline for an order
-        app.get('/tracking/:orderId', verifyJWT, async (req, res) => {
-            const orderId = req.params.orderId;
-            // Verify user has access to this order
-            const order = await orderCollection.findOne({ _id: new ObjectId(orderId) });
-            const user = await userCollection.findOne({ email: req.decoded.email });
-            const isAuthorized = user.role === 'admin' ||
-                (user.role === 'manager' && order.productCreatedBy === req.decoded.email) ||
-                order.buyerEmail === req.decoded.email;
-            if (!isAuthorized) return res.status(403).send({ message: 'Not authorized' });
-            const tracking = await trackingCollection.find({ orderId }).sort({ timestamp: 1 }).toArray();
-            res.send(tracking);
-        });
-
- // Get all users (Admin only)
-        app.get('/admin/users', verifyJWT, verifyAdmin, async (req, res) => {
-            const users = await userCollection.find().toArray();
-            const safeUsers = users.map(({ password, ...user }) => user);
-            res.send(safeUsers);
-        });
-          // Update user role or suspend user
-        app.patch('/admin/users/:email', verifyJWT, verifyAdmin, async (req, res) => {
-            const email = req.params.email;
-            const { role, status, suspendReason } = req.body;
-            const query = { email: email };
-            const updateDoc = { $set: {} };
-            if (role) updateDoc.$set.role = role;
-            if (status) updateDoc.$set.status = status;
-            if (suspendReason) updateDoc.$set.suspendReason = suspendReason;
-            const result = await userCollection.updateOne(query, updateDoc);
-            res.send(result);
-        });
-  // Admin: Get all products
-        app.get('/admin/products', verifyJWT, verifyAdmin, async (req, res) => {
-            const products = await productCollection.find().toArray();
-            res.send(products);
-        });
-
-          // Admin: Toggle showOnHome for a product
-        app.patch('/admin/products/:id/show-on-home', verifyJWT, verifyAdmin, async (req, res) => {
-            const id = req.params.id;
-            const { showOnHome } = req.body;
-            const query = { _id: new ObjectId(id) };
-            const updateDoc = { $set: { showOnHome } };
-            const result = await productCollection.updateOne(query, updateDoc);
-            res.send(result);
-        });
-          // =============== STATISTICS APIs (Optional) ===============
-        app.get('/stats/overview', verifyJWT, verifyAdmin, async (req, res) => {
-            const totalProducts = await productCollection.countDocuments();
-            const totalOrders = await orderCollection.countDocuments();
-            const totalUsers = await userCollection.countDocuments();
-            const pendingOrders = await orderCollection.countDocuments({ status: 'Pending' });
-            const recentOrders = await orderCollection.countDocuments({
-                orderDate: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } // Last 30 days
-            });
-            res.send({ totalProducts, totalOrders, totalUsers, pendingOrders, recentOrders });
-        });
-
-        // =============== HEALTH CHECK ===============
-        app.get('/', (req, res) => {
-            res.send('🚀 Garments Order & Production Tracker Server is Running...');
-        });
-
-    // app.post('/products', async(req,res)=>{
-    //     const newProduct = req.body;
-    //     const result = await productCollection.insertOne(newProduct);
-    //     res.send(result);
-    // })
-
-    await client.db("admin").command({ping : 1});
-    console.log("Ping Database");
+  } finally {
+    // DB connection stays open for API
+  }
 }
-finally{
 
-}
-}
 run().catch(console.dir);
 
-app.listen(port, () => {
-    console.log(`Server is running, ${port}`);
-})
+app.get('/', (req, res) => res.send('Server is running...'));
+app.listen(port, () => console.log(`Server running on port ${port}`));
